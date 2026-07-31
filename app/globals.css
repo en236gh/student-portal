@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3f4f6;
+  --surface: #f3f4f6;
+  --surface-muted: #eceff3;
+  --ink: #0b0f19;
+  --foreground: #0b0f19;
+  --muted: #6b7280;
+  --brand-gold: #f7a81b;
+  --brand-green: #008b45;
+  --brand-red: #ed1c24;
+  --panel-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  --sidebar-shadow: 8px 0 30px rgba(15, 23, 42, 0.04);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-ink: var(--ink);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-green: var(--brand-green);
+  --color-brand-red: var(--brand-red);
+  --font-sans: var(--font-inter);
+  --shadow-panel: var(--panel-shadow);
+  --shadow-sidebar: var(--sidebar-shadow);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand-gold) 35%, white);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+.page-canvas {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 100% 0%, rgba(247, 168, 27, 0.12), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 0% 100%, rgba(0, 139, 69, 0.08), transparent 50%);
+  min-height: 100vh;
+}
+
+.panel-shadow {
+  box-shadow: var(--panel-shadow);
+}
+
+.sidebar-shadow {
+  box-shadow: var(--sidebar-shadow);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  .page-canvas {
+    background: white !important;
+    min-height: auto !important;
+  }
+
+  aside,
+  header,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding-left: 0 !important;
+  }
+
+  .animate-fade-up {
+    animation: none !important;
+  }
+}
