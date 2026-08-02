@@ -10,8 +10,8 @@ export default function ExamsPage() {
         <div>
           <h2 className="text-lg font-semibold text-ink">My examinations</h2>
           <p className="text-sm text-muted">
-            Generate a slip for each allocated sitting, then download the PDF to
-            print and bring to the venue.
+            Generate one examination pass for your allocated sittings in a
+            period, then download the PDF to print and bring to the venue.
           </p>
         </div>
 

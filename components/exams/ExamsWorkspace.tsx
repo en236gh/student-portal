@@ -2,6 +2,7 @@
 
 import { ExamCard } from "@/components/exams/ExamCard";
 import { listMyExaminations } from "@/lib/api";
+import { samePeriod } from "@/lib/exams";
 import type { StudentExamination } from "@/lib/types";
 import { ApiError } from "@/lib/types";
 import { AcademicCapIcon } from "@heroicons/react/24/outline";
@@ -34,11 +35,15 @@ export function ExamsWorkspace() {
     void load();
   }, [load]);
 
-  function handleUpdated(updated: StudentExamination) {
+  function handlePassGenerated(updated: StudentExamination) {
     setExams((current) =>
       current.map((exam) =>
-        String(exam.examSessionId) === String(updated.examSessionId)
-          ? updated
+        samePeriod(exam, updated)
+          ? {
+              ...exam,
+              passGenerated: true,
+              passId: updated.passId,
+            }
           : exam,
       ),
     );
@@ -80,7 +85,7 @@ export function ExamsWorkspace() {
         <ExamCard
           key={String(exam.examSessionId)}
           exam={exam}
-          onUpdated={handleUpdated}
+          onPassGenerated={handlePassGenerated}
         />
       ))}
     </div>

@@ -8,7 +8,8 @@ import type {
   ActivateAccountPayload,
   ApiResponse,
   AuthTokens,
-  ExaminationSlip,
+  ExaminationPass,
+  ExaminationPassPeriod,
   LoginPayload,
   StudentExamination,
   StudentProfile,
@@ -140,32 +141,42 @@ export async function getStudentProfile(accessToken: string) {
   return parseResponse<StudentProfile>(res);
 }
 
+function examinationPassQuery(period: ExaminationPassPeriod = {}) {
+  const params = new URLSearchParams();
+  if (period.academicYear) params.set("academicYear", period.academicYear);
+  if (period.semester !== undefined && period.semester !== "") {
+    params.set("semester", String(period.semester));
+  }
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 export async function listMyExaminations() {
   const res = await authFetch("/api/student/examinations");
   return parseResponse<StudentExamination[]>(res);
 }
 
-export async function generateExaminationSlip(examSessionId: string | number) {
+export async function generateExaminationPass(period: ExaminationPassPeriod = {}) {
   const res = await authFetch(
-    `/api/student/examinations/${examSessionId}/slip`,
+    `/api/student/examination-pass${examinationPassQuery(period)}`,
     { method: "POST" },
   );
-  return parseResponse<ExaminationSlip>(res);
+  return parseResponse<ExaminationPass>(res);
 }
 
-export async function getExaminationSlip(examSessionId: string | number) {
+export async function getExaminationPass(period: ExaminationPassPeriod = {}) {
   const res = await authFetch(
-    `/api/student/examinations/${examSessionId}/slip`,
+    `/api/student/examination-pass${examinationPassQuery(period)}`,
   );
-  return parseResponse<ExaminationSlip>(res);
+  return parseResponse<ExaminationPass>(res);
 }
 
-export async function downloadExaminationSlipPdf(
-  examSessionId: string | number,
+export async function downloadExaminationPassPdf(
+  period: ExaminationPassPeriod = {},
   computerNumber: string,
 ) {
   const res = await authFetch(
-    `/api/student/examinations/${examSessionId}/slip/pdf`,
+    `/api/student/examination-pass/pdf${examinationPassQuery(period)}`,
   );
 
   if (!res.ok) {
@@ -180,9 +191,7 @@ export async function downloadExaminationSlipPdf(
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition");
   const match = disposition?.match(/filename="?([^"]+)"?/i);
-  const filename =
-    match?.[1] ||
-    `exam-slip-${computerNumber}-${examSessionId}.pdf`;
+  const filename = match?.[1] || `exam-pass-${computerNumber}.pdf`;
 
   return { blob, filename };
 }

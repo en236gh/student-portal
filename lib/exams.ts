@@ -1,4 +1,8 @@
-import type { ExaminationSlip, StudentExamination } from "@/lib/types";
+import type {
+  ExaminationPass,
+  ExaminationPassPeriod,
+  StudentExamination,
+} from "@/lib/types";
 
 export function formatExamDate(value?: string | null) {
   if (!value) return "—";
@@ -24,52 +28,61 @@ export function formatExamTime(value?: string | null) {
   return timePart || value;
 }
 
-export function formatExamWindow(exam: Pick<StudentExamination, "examDate" | "startTime" | "endTime">) {
+export function formatExamWindow(
+  exam: Pick<StudentExamination, "examDate" | "startTime" | "endTime">,
+) {
   return `${formatExamDate(exam.examDate)} · ${formatExamTime(exam.startTime)} – ${formatExamTime(exam.endTime)}`;
 }
 
-export function normalizeSlip(slip: ExaminationSlip): {
-  slipId: string | number;
-  examSessionId: string | number;
-  computerNumber: string;
-  fullName: string;
-  school: string;
-  programme: string;
-  currentYear: string | number;
-  courseCode: string;
-  examDate: string;
-  startTime: string;
-  endTime: string;
-  academicYear: string;
-  semester: string | number;
-  examType: string;
-  venueName: string;
-  building: string;
-  seatNumber: string | number;
-  qrImageBase64: string;
-} {
-  const student = slip.student;
-  const exam = slip.exam;
+export function periodKey(period: ExaminationPassPeriod) {
+  return `${period.academicYear ?? ""}::${period.semester ?? ""}`;
+}
+
+export function samePeriod(
+  a: ExaminationPassPeriod,
+  b: ExaminationPassPeriod,
+) {
+  return (
+    String(a.academicYear ?? "") === String(b.academicYear ?? "") &&
+    String(a.semester ?? "") === String(b.semester ?? "")
+  );
+}
+
+export function passHref(period: ExaminationPassPeriod) {
+  const params = new URLSearchParams();
+  if (period.academicYear) params.set("academicYear", period.academicYear);
+  if (period.semester !== undefined && period.semester !== "") {
+    params.set("semester", String(period.semester));
+  }
+  const query = params.toString();
+  return query ? `/exams/pass?${query}` : "/exams/pass";
+}
+
+export function normalizePass(pass: ExaminationPass) {
+  const student = pass.student;
 
   return {
-    slipId: slip.slipId,
-    examSessionId: slip.examSessionId,
-    computerNumber: slip.computerNumber || student?.computerNumber || "—",
-    fullName: slip.fullName || student?.fullName || "—",
-    school: slip.school || student?.school || "—",
-    programme: slip.programme || student?.programme || "—",
-    currentYear: slip.currentYear ?? student?.currentYear ?? "—",
-    courseCode: slip.courseCode || exam?.courseCode || "—",
-    examDate: slip.examDate || exam?.examDate || "",
-    startTime: slip.startTime || exam?.startTime || "",
-    endTime: slip.endTime || exam?.endTime || "",
-    academicYear: slip.academicYear || exam?.academicYear || "—",
-    semester: slip.semester ?? exam?.semester ?? "—",
-    examType: slip.examType || exam?.examType || "—",
-    venueName: slip.venueName || exam?.venueName || "—",
-    building: slip.building || exam?.building || "—",
-    seatNumber: slip.seatNumber ?? exam?.seatNumber ?? "—",
-    qrImageBase64: slip.qrImageBase64,
+    passId: pass.passId,
+    academicYear: pass.academicYear,
+    semester: pass.semester,
+    computerNumber: pass.computerNumber || student?.computerNumber || "—",
+    fullName: pass.fullName || student?.fullName || "—",
+    school: pass.school || student?.school || "—",
+    programme: pass.programme || student?.programme || "—",
+    currentYear: pass.currentYear ?? student?.currentYear ?? "—",
+    qrImageBase64: pass.qrImageBase64,
+    expiresAt: pass.expiresAt || null,
+    examinations: (pass.examinations || []).map((exam) => ({
+      examSessionId: exam.examSessionId,
+      courseCode: exam.courseCode || "—",
+      examDate: exam.examDate || "",
+      startTime: exam.startTime || "",
+      endTime: exam.endTime || "",
+      examType: exam.examType || "—",
+      venueName: exam.venueName || "—",
+      building: exam.building || "—",
+      seatNumber: exam.seatNumber ?? "—",
+    })),
   };
 }
 

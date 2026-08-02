@@ -56,48 +56,49 @@ export type StudentExamination = {
   venueName: string | null;
   building: string | null;
   seatNumber: string | number | null;
-  slipGenerated: boolean;
-  slipId: number | string | null;
+  passGenerated: boolean;
+  passId: number | string | null;
 };
 
-export type ExaminationSlip = {
-  slipId: number | string;
-  examSessionId: number | string;
+export type ExaminationPassPeriod = {
+  academicYear?: string;
+  semester?: string | number;
+};
+
+export type ExaminationPassExam = {
+  examSessionId?: number | string;
+  courseCode: string;
+  examDate: string;
+  startTime: string;
+  endTime: string;
+  academicYear?: string;
+  semester?: string | number;
+  examType?: string;
+  examStatus?: string;
+  venueName: string | null;
+  building?: string | null;
+  seatNumber: string | number | null;
+};
+
+export type ExaminationPass = {
+  passId: number | string;
+  academicYear: string;
+  semester: string | number;
   computerNumber: string;
   fullName: string;
   school?: string;
   programme?: string;
   currentYear?: number;
-  courseCode?: string;
-  examDate?: string;
-  startTime?: string;
-  endTime?: string;
-  academicYear?: string;
-  semester?: string | number;
-  examType?: string;
-  venueName: string;
-  building?: string | null;
-  seatNumber: string | number;
   qrToken: string;
   qrImageBase64: string;
+  expiresAt?: string | null;
+  examinations: ExaminationPassExam[];
   student?: {
     computerNumber: string;
     fullName: string;
     school?: string;
     programme?: string;
     currentYear?: number;
-  };
-  exam?: {
-    courseCode?: string;
-    examDate?: string;
-    startTime?: string;
-    endTime?: string;
-    academicYear?: string;
-    semester?: string | number;
-    examType?: string;
-    venueName?: string;
-    building?: string | null;
-    seatNumber?: string | number;
   };
 };
 

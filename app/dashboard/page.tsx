@@ -8,6 +8,8 @@ import { getSessionUser } from "@/lib/auth";
 import {
   examStatusTone,
   formatExamWindow,
+  passHref,
+  periodKey,
 } from "@/lib/exams";
 import type { StudentExamination } from "@/lib/types";
 import { ApiError } from "@/lib/types";
@@ -64,13 +66,17 @@ export default function DashboardPage() {
       return !status.includes("COMPLETE") && !status.includes("CANCEL");
     });
     const allocated = exams.filter((e) => e.allocated).length;
-    const slipsReady = exams.filter((e) => e.slipGenerated).length;
+    const periodsWithPass = new Set(
+      exams
+        .filter((e) => e.passGenerated)
+        .map((e) => periodKey(e)),
+    );
     const awaitingSeat = exams.filter((e) => !e.allocated).length;
 
     return {
       upcoming: upcoming.length,
       allocated,
-      slipsReady,
+      passesReady: periodsWithPass.size,
       awaitingSeat,
       preview: upcoming.slice(0, 4),
     };
@@ -81,7 +87,7 @@ export default function DashboardPage() {
       <div className="space-y-8">
         <p className="text-sm text-muted">
           Welcome back, {firstName}. Review upcoming sittings and generate your
-          examination slips here.
+          examination pass here.
         </p>
 
         {error ? (
@@ -102,13 +108,13 @@ export default function DashboardPage() {
             <Tile
               title="Venue allocated"
               value={loading ? "—" : stats.allocated}
-              subtitle="Ready for slip"
+              subtitle="Ready for pass"
               accent="green"
               icon={<ClipboardDocumentCheckIcon className="h-5 w-5" />}
             />
             <Tile
-              title="Slips generated"
-              value={loading ? "—" : stats.slipsReady}
+              title="Passes generated"
+              value={loading ? "—" : stats.passesReady}
               subtitle={
                 stats.awaitingSeat > 0
                   ? `${stats.awaitingSeat} awaiting seat`
@@ -124,14 +130,14 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-lg font-semibold text-ink">Quick actions</h2>
             <p className="text-sm text-muted">
-              Open your examinations list to generate slips and download PDFs.
+              Open your examinations list to generate a pass and download the PDF.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Tile
               title="My examinations"
-              helper="See course, venue, seat, and slip status"
+              helper="See course, venue, seat, and pass status"
               href="/exams"
               accent="ink"
               className="min-h-[140px]"
@@ -139,8 +145,8 @@ export default function DashboardPage() {
               icon={<AcademicCapIcon className="h-5 w-5" />}
             />
             <Tile
-              title="Generate a slip"
-              helper="Create a signed QR for an allocated exam"
+              title="Generate a pass"
+              helper="Create one signed QR covering all allocated exams"
               href="/exams"
               accent="gold"
               className="min-h-[140px]"
@@ -149,7 +155,7 @@ export default function DashboardPage() {
             />
             <Tile
               title="Download PDF"
-              helper="Print the official slip and bring it to the venue"
+              helper="Print the official pass and bring it to the venue"
               href="/exams"
               accent="green"
               className="min-h-[140px]"
@@ -195,8 +201,11 @@ export default function DashboardPage() {
                 <Link
                   key={String(exam.examSessionId)}
                   href={
-                    exam.slipGenerated
-                      ? `/exams/${exam.examSessionId}/slip`
+                    exam.passGenerated
+                      ? passHref({
+                          academicYear: exam.academicYear,
+                          semester: exam.semester,
+                        })
                       : "/exams"
                   }
                   className="rounded-[10px] border border-transparent bg-white p-6 panel-shadow transition-colors duration-200 hover:border-ink/15"
@@ -231,9 +240,9 @@ export default function DashboardPage() {
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-muted">Slip</dt>
+                      <dt className="text-xs text-muted">Pass</dt>
                       <dd className="text-sm font-medium text-ink">
-                        {exam.slipGenerated
+                        {exam.passGenerated
                           ? "Ready — view / download"
                           : exam.allocated
                             ? "Not generated yet"

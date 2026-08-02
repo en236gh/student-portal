@@ -3,13 +3,14 @@
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import {
-  downloadExaminationSlipPdf,
-  generateExaminationSlip,
+  downloadExaminationPassPdf,
+  generateExaminationPass,
 } from "@/lib/api";
 import { getSessionUser } from "@/lib/auth";
 import {
   examStatusTone,
   formatExamWindow,
+  passHref,
   triggerBlobDownload,
 } from "@/lib/exams";
 import type { StudentExamination } from "@/lib/types";
@@ -31,23 +32,31 @@ function errorMessage(err: unknown, fallback: string) {
 
 export function ExamCard({
   exam,
-  onUpdated,
+  onPassGenerated,
 }: {
   exam: StudentExamination;
-  onUpdated?: (exam: StudentExamination) => void;
+  onPassGenerated?: (exam: StudentExamination) => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"generate" | "download" | null>(null);
+  const period = {
+    academicYear: exam.academicYear,
+    semester: exam.semester,
+  };
 
   async function handleGenerate() {
     setBusy("generate");
     try {
-      await generateExaminationSlip(exam.examSessionId);
-      toast.success("Examination slip generated");
-      onUpdated?.({ ...exam, slipGenerated: true });
-      router.push(`/exams/${exam.examSessionId}/slip`);
+      const result = await generateExaminationPass(period);
+      toast.success("Examination pass generated");
+      onPassGenerated?.({
+        ...exam,
+        passGenerated: true,
+        passId: result.data.passId,
+      });
+      router.push(passHref(period));
     } catch (err) {
-      toast.error(errorMessage(err, "Unable to generate slip"));
+      toast.error(errorMessage(err, "Unable to generate pass"));
     } finally {
       setBusy(null);
     }
@@ -56,10 +65,9 @@ export function ExamCard({
   async function handleDownload() {
     setBusy("download");
     try {
-      const computerNumber =
-        getSessionUser()?.computerNumber || "student";
-      const { blob, filename } = await downloadExaminationSlipPdf(
-        exam.examSessionId,
+      const computerNumber = getSessionUser()?.computerNumber || "student";
+      const { blob, filename } = await downloadExaminationPassPdf(
+        period,
         computerNumber,
       );
       triggerBlobDownload(blob, filename);
@@ -116,32 +124,30 @@ export function ExamCard({
 
       {waitingAllocation ? (
         <div className="mt-5 rounded-[10px] bg-brand-gold/10 px-4 py-3 text-sm text-amber-900">
-          Waiting for venue allocation. Slip actions are disabled until a seat is assigned.
+          Waiting for venue allocation. Pass actions are disabled until a seat is
+          assigned.
         </div>
       ) : null}
 
       <div className="mt-5 flex flex-wrap gap-2">
         {waitingAllocation ? (
           <Button size="sm" disabled>
-            Generate Slip
+            Generate Pass
           </Button>
-        ) : !exam.slipGenerated ? (
+        ) : !exam.passGenerated ? (
           <Button
             size="sm"
             onClick={handleGenerate}
             disabled={busy !== null}
           >
             <DocumentTextIcon className="h-4 w-4" />
-            {busy === "generate" ? "Generating…" : "Generate Slip"}
+            {busy === "generate" ? "Generating…" : "Generate Pass"}
           </Button>
         ) : (
           <>
-            <Button
-              size="sm"
-              onClick={() => router.push(`/exams/${exam.examSessionId}/slip`)}
-            >
+            <Button size="sm" onClick={() => router.push(passHref(period))}>
               <DocumentTextIcon className="h-4 w-4" />
-              View Slip
+              View Pass
             </Button>
             <Button
               size="sm"

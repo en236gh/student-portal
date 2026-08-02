@@ -2,18 +2,18 @@
 
 import { Button } from "@/components/ui/Button";
 import {
-  downloadExaminationSlipPdf,
-  generateExaminationSlip,
-  getExaminationSlip,
+  downloadExaminationPassPdf,
+  generateExaminationPass,
+  getExaminationPass,
 } from "@/lib/api";
 import { getSessionUser } from "@/lib/auth";
 import {
   formatExamDate,
   formatExamTime,
-  normalizeSlip,
+  normalizePass,
   triggerBlobDownload,
 } from "@/lib/exams";
-import type { ExaminationSlip } from "@/lib/types";
+import type { ExaminationPass, ExaminationPassPeriod } from "@/lib/types";
 import { ApiError } from "@/lib/types";
 import {
   ArrowDownTrayIcon,
@@ -31,8 +31,8 @@ function errorMessage(err: unknown, fallback: string) {
   return fallback;
 }
 
-export function SlipPreview({ examSessionId }: { examSessionId: string }) {
-  const [slip, setSlip] = useState<ExaminationSlip | null>(null);
+export function PassPreview({ period }: { period: ExaminationPassPeriod }) {
+  const [pass, setPass] = useState<ExaminationPass | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
@@ -42,40 +42,40 @@ export function SlipPreview({ examSessionId }: { examSessionId: string }) {
     setLoading(true);
     setError("");
     try {
-      const result = await getExaminationSlip(examSessionId);
-      setSlip(result.data);
+      const result = await getExaminationPass(period);
+      setPass(result.data);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
 
-      // Slip not generated yet — offer generate
+      // Pass not generated yet — offer generate
       if (err instanceof ApiError && (err.status === 400 || err.status === 404)) {
         setError(err.message);
-        setSlip(null);
+        setPass(null);
       } else {
-        setError(errorMessage(err, "Unable to load examination slip"));
+        setError(errorMessage(err, "Unable to load examination pass"));
       }
     } finally {
       setLoading(false);
     }
-  }, [examSessionId]);
+  }, [period.academicYear, period.semester]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const view = useMemo(() => (slip ? normalizeSlip(slip) : null), [slip]);
+  const view = useMemo(() => (pass ? normalizePass(pass) : null), [pass]);
 
   async function handleGenerate() {
     setGenerating(true);
     setError("");
     try {
-      const result = await generateExaminationSlip(examSessionId);
-      setSlip(result.data);
-      toast.success("Examination slip generated");
+      const result = await generateExaminationPass(period);
+      setPass(result.data);
+      toast.success("Examination pass generated");
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) return;
-      setError(errorMessage(err, "Unable to generate slip"));
-      toast.error(errorMessage(err, "Unable to generate slip"));
+      setError(errorMessage(err, "Unable to generate pass"));
+      toast.error(errorMessage(err, "Unable to generate pass"));
     } finally {
       setGenerating(false);
     }
@@ -89,8 +89,11 @@ export function SlipPreview({ examSessionId }: { examSessionId: string }) {
         view.computerNumber !== "—"
           ? String(view.computerNumber)
           : getSessionUser()?.computerNumber || "student";
-      const { blob, filename } = await downloadExaminationSlipPdf(
-        examSessionId,
+      const { blob, filename } = await downloadExaminationPassPdf(
+        {
+          academicYear: view.academicYear,
+          semester: view.semester,
+        },
         computerNumber,
       );
       triggerBlobDownload(blob, filename);
@@ -109,7 +112,7 @@ export function SlipPreview({ examSessionId }: { examSessionId: string }) {
   if (loading) {
     return (
       <div className="rounded-[10px] bg-white p-10 text-center panel-shadow">
-        <p className="text-sm text-muted">Loading examination slip…</p>
+        <p className="text-sm text-muted">Loading examination pass…</p>
       </div>
     );
   }
@@ -126,13 +129,13 @@ export function SlipPreview({ examSessionId }: { examSessionId: string }) {
         </Link>
 
         <div className="rounded-[10px] bg-white p-8 panel-shadow">
-          <h2 className="text-lg font-semibold text-ink">Slip not available</h2>
+          <h2 className="text-lg font-semibold text-ink">Pass not available</h2>
           <p className="mt-2 text-sm text-brand-red">
-            {error || "This examination slip has not been generated yet."}
+            {error || "This examination pass has not been generated yet."}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             <Button onClick={handleGenerate} disabled={generating}>
-              {generating ? "Generating…" : "Generate Slip"}
+              {generating ? "Generating…" : "Generate Pass"}
             </Button>
             <Button variant="secondary" onClick={() => void load()}>
               Retry
@@ -172,7 +175,7 @@ export function SlipPreview({ examSessionId }: { examSessionId: string }) {
         </div>
       ) : null}
 
-      <article className="mx-auto max-w-2xl rounded-[10px] bg-white p-6 panel-shadow sm:p-8 print:max-w-none print:shadow-none print:border print:border-black">
+      <article className="mx-auto max-w-3xl rounded-[10px] bg-white p-6 panel-shadow sm:p-8 print:max-w-none print:shadow-none print:border print:border-black">
         <header className="flex items-center justify-between gap-4 border-b border-black/10 pb-5">
           <div className="flex items-center gap-3">
             <Image
@@ -187,11 +190,11 @@ export function SlipPreview({ examSessionId }: { examSessionId: string }) {
                 University of Zambia
               </p>
               <h1 className="text-xl font-bold tracking-tight text-ink">
-                Examination Slip
+                Examination Pass
               </h1>
             </div>
           </div>
-          <p className="font-mono text-xs text-muted">#{view.slipId}</p>
+          <p className="font-mono text-xs text-muted">#{view.passId}</p>
         </header>
 
         <section className="mt-6 grid gap-6 sm:grid-cols-[1fr_auto]">
@@ -209,46 +212,14 @@ export function SlipPreview({ examSessionId }: { examSessionId: string }) {
 
             <dl className="grid gap-4 sm:grid-cols-2">
               <div>
-                <dt className="text-xs text-muted">Course</dt>
-                <dd className="font-mono text-sm font-semibold text-ink">
-                  {view.courseCode}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted">Exam type</dt>
-                <dd className="text-sm font-medium text-ink">{view.examType}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted">Date</dt>
+                <dt className="text-xs text-muted">Academic year</dt>
                 <dd className="text-sm font-medium text-ink">
-                  {formatExamDate(view.examDate)}
+                  {view.academicYear}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted">Time</dt>
-                <dd className="text-sm font-medium text-ink">
-                  {formatExamTime(view.startTime)} – {formatExamTime(view.endTime)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted">Venue</dt>
-                <dd className="text-sm font-medium text-ink">{view.venueName}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted">Building</dt>
-                <dd className="text-sm font-medium text-ink">{view.building}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted">Seat number</dt>
-                <dd className="font-mono text-base font-bold text-ink">
-                  {view.seatNumber}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted">Session</dt>
-                <dd className="text-sm font-medium text-ink">
-                  {view.academicYear} · Sem {view.semester}
-                </dd>
+                <dt className="text-xs text-muted">Semester</dt>
+                <dd className="text-sm font-medium text-ink">{view.semester}</dd>
               </div>
             </dl>
           </div>
@@ -257,7 +228,7 @@ export function SlipPreview({ examSessionId }: { examSessionId: string }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`data:image/png;base64,${view.qrImageBase64}`}
-              alt="Examination slip QR code"
+              alt="Examination pass QR code"
               width={200}
               height={200}
               className="h-[200px] w-[200px] rounded-[10px] border border-black/10 bg-white p-2"
@@ -268,8 +239,54 @@ export function SlipPreview({ examSessionId }: { examSessionId: string }) {
           </div>
         </section>
 
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold text-ink">Allocated examinations</h2>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-black/10 text-xs text-muted">
+                  <th className="py-2 pr-3 font-medium">Course</th>
+                  <th className="py-2 pr-3 font-medium">Date</th>
+                  <th className="py-2 pr-3 font-medium">Time</th>
+                  <th className="py-2 pr-3 font-medium">Venue</th>
+                  <th className="py-2 font-medium">Seat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.examinations.map((exam, index) => (
+                  <tr
+                    key={String(exam.examSessionId ?? `${exam.courseCode}-${index}`)}
+                    className="border-b border-black/5"
+                  >
+                    <td className="py-3 pr-3 font-mono text-xs font-semibold text-ink">
+                      {exam.courseCode}
+                    </td>
+                    <td className="py-3 pr-3 text-ink">
+                      {formatExamDate(exam.examDate)}
+                    </td>
+                    <td className="py-3 pr-3 text-ink">
+                      {formatExamTime(exam.startTime)} –{" "}
+                      {formatExamTime(exam.endTime)}
+                    </td>
+                    <td className="py-3 pr-3 text-ink">
+                      {exam.venueName}
+                      {exam.building && exam.building !== "—"
+                        ? ` · ${exam.building}`
+                        : ""}
+                    </td>
+                    <td className="py-3 font-mono font-semibold text-ink">
+                      {exam.seatNumber}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <footer className="mt-8 border-t border-black/10 pt-4 text-xs text-muted print:hidden">
-          Prefer the official PDF for paper printing — it embeds the same signed QR.
+          Prefer the official PDF for paper printing — it embeds the same signed QR
+          for all exams in this period.
         </footer>
       </article>
     </div>
