@@ -17,7 +17,7 @@ import type {
 import { ApiError } from "@/lib/types";
 
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8080";
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "https://fourth-91rl.onrender.com";
 
 async function readJson<T>(res: Response): Promise<ApiResponse<T> | null> {
   try {
