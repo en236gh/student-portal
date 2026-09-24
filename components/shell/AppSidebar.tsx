@@ -17,8 +17,7 @@ const navItems = [
   { href: "/dashboard", label: "dashboard", icon: HomeIcon },
   { href: "/exams", label: "my exams", icon: AcademicCapIcon },
   { href: "/attendance", label: "attendance", icon: ClipboardDocumentCheckIcon },
-  { href: "/timetable", label: "timetable", icon: CalendarDaysIcon },
-  { href: "/profile", label: "profile", icon: UserCircleIcon },
+  
 ];
 
 export function AppSidebar() {

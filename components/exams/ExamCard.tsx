@@ -31,14 +31,15 @@ function errorMessage(err: unknown, fallback: string) {
 }
 
 export function ExamCard({
-  exam,
+  exams,
   onPassGenerated,
 }: {
-  exam: StudentExamination;
+  exams: StudentExamination[];
   onPassGenerated?: (exam: StudentExamination) => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"generate" | "download" | null>(null);
+  const exam = exams[0];
   const period = {
     academicYear: exam.academicYear,
     semester: exam.semester,
@@ -79,7 +80,8 @@ export function ExamCard({
     }
   }
 
-  const waitingAllocation = !exam.allocated;
+  const waitingAllocation = exams.some((item) => !item.allocated);
+  const sameStatus = exams.every((item) => item.examStatus === exam.examStatus);
 
   return (
     <article className="flex flex-col rounded-[10px] border border-transparent bg-white p-6 panel-shadow transition-colors duration-200 hover:border-ink/10">
@@ -89,45 +91,56 @@ export function ExamCard({
             <AcademicCapIcon className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-mono text-xs font-semibold tracking-wide text-muted">
-              {exam.courseCode}
-            </p>
-            <h3 className="mt-1 text-base font-semibold text-ink">
-              {exam.examType} · {exam.academicYear} · Sem {exam.semester}
-            </h3>
-            <p className="mt-1 text-sm text-muted">{formatExamWindow(exam)}</p>
+              <h3 className="text-base font-semibold text-ink">
+                Examination pass · {exam.academicYear} · Sem {exam.semester}
+              </h3>
+              <p className="mt-1 text-sm text-muted">
+                {exams.length} allocated course{exams.length === 1 ? "" : "s"}
+              </p>
           </div>
         </div>
-        <Badge tone={examStatusTone(exam.examStatus)}>{exam.examStatus}</Badge>
+          <Badge tone={examStatusTone(sameStatus ? exam.examStatus : "Allocated")}>
+            {sameStatus ? exam.examStatus : "Allocated"}
+          </Badge>
       </div>
 
-      <dl className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div>
-          <dt className="text-xs text-muted">Venue</dt>
-          <dd className="text-sm font-medium text-ink">
-            {exam.allocated ? exam.venueName || "—" : "Not allocated"}
-          </dd>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[620px] border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-black/10 text-xs text-muted">
+                <th className="py-2 pr-3 font-medium">Course</th>
+                <th className="py-2 pr-3 font-medium">Exam</th>
+                <th className="py-2 pr-3 font-medium">Date and time</th>
+                <th className="py-2 pr-3 font-medium">Venue</th>
+                <th className="py-2 font-medium">Seat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {exams.map((item) => (
+                <tr key={String(item.examSessionId)} className="border-b border-black/5 last:border-b-0">
+                  <td className="py-3 pr-3 font-mono text-xs font-semibold text-ink">
+                    {item.courseCode}
+                  </td>
+                  <td className="py-3 pr-3 text-ink">{item.examType}</td>
+                  <td className="py-3 pr-3 text-ink">{formatExamWindow(item)}</td>
+                  <td className="py-3 pr-3 text-ink">
+                    {item.allocated ? item.venueName || "—" : "Not allocated"}
+                  </td>
+                  <td className="py-3 font-mono font-semibold text-ink">
+                    {item.allocated ? item.seatNumber ?? "—" : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div>
-          <dt className="text-xs text-muted">Building</dt>
-          <dd className="text-sm font-medium text-ink">
-            {exam.allocated ? exam.building || "—" : "—"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted">Seat</dt>
-          <dd className="font-mono text-sm font-semibold text-ink">
-            {exam.allocated ? exam.seatNumber ?? "—" : "—"}
-          </dd>
-        </div>
-      </dl>
 
-      {waitingAllocation ? (
-        <div className="mt-5 rounded-[10px] bg-brand-gold/10 px-4 py-3 text-sm text-amber-900">
-          Waiting for venue allocation. Pass actions are disabled until a seat is
-          assigned.
-        </div>
-      ) : null}
+        {waitingAllocation ? (
+          <div className="mt-5 rounded-[10px] bg-brand-gold/10 px-4 py-3 text-sm text-amber-900">
+            Waiting for venue allocation. The pass can be generated once every course
+            has a seat assigned.
+          </div>
+        ) : null}
 
       <div className="mt-5 flex flex-wrap gap-2">
         {waitingAllocation ? (

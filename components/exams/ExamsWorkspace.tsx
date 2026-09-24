@@ -79,15 +79,5 @@ export function ExamsWorkspace() {
     );
   }
 
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {exams.map((exam) => (
-        <ExamCard
-          key={String(exam.examSessionId)}
-          exam={exam}
-          onPassGenerated={handlePassGenerated}
-        />
-      ))}
-    </div>
-  );
+  return <ExamCard exams={exams} onPassGenerated={handlePassGenerated} />;
 }

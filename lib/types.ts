@@ -58,6 +58,7 @@ export type StudentExamination = {
   seatNumber: string | number | null;
   passGenerated: boolean;
   passId: number | string | null;
+  attendanceStatus?: string | null;
 };
 
 export type ExaminationPassPeriod = {
