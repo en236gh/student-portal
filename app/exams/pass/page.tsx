@@ -13,7 +13,7 @@ function PassPageContent() {
 
   return (
     <AppShell title="Examination pass">
-      <PassPreview period={{ academicYear, semester }} />
+      <PassPreview key={`${academicYear || ""}:${semester || ""}`} period={{ academicYear, semester }} />
     </AppShell>
   );
 }

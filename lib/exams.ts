@@ -71,8 +71,9 @@ export function normalizePass(pass: ExaminationPass) {
     programme: pass.programme || student?.programme || "—",
     currentYear: pass.currentYear ?? student?.currentYear ?? "—",
     qrImageBase64: pass.qrImageBase64,
+    generatedAt: pass.generatedAt || null,
     expiresAt: pass.expiresAt || null,
-    examinations: (pass.examinations || []).map((exam) => ({
+    examinations: ((pass.examinations || []).filter(isPublishedExam)).map((exam) => ({
       examSessionId: exam.examSessionId,
       courseCode: exam.courseCode || "—",
       examDate: exam.examDate || "",
@@ -99,10 +100,14 @@ export function triggerBlobDownload(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
-export function examStatusTone(status: string) {
-  const value = status.toUpperCase();
+export function examStatusTone(status?: string)  {
+  const value = (status || "").toUpperCase();
   if (value.includes("COMPLETE") || value.includes("CLOSED")) return "neutral" as const;
   if (value.includes("LIVE") || value.includes("IN_PROGRESS")) return "success" as const;
   if (value.includes("CANCEL")) return "danger" as const;
   return "info" as const;
+}
+
+export function isPublishedExam(exam: { examStatus?: string }) {
+  return !exam.examStatus?.toUpperCase().includes("DRAFT");
 }

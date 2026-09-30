@@ -92,6 +92,7 @@ export type ExaminationPass = {
   currentYear?: number;
   qrToken: string;
   qrImageBase64: string;
+  generatedAt?: string | null;
   expiresAt?: string | null;
   examinations: ExaminationPassExam[];
   student?: {
@@ -112,3 +113,11 @@ export class ApiError extends Error {
     this.status = status;
   }
 }
+
+export type ExaminationNotification = {
+  id: string | number;
+  title?: string;
+  message?: string;
+  isRead?: boolean;
+  createdAt?: string;
+};

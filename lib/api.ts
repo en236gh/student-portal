@@ -2,6 +2,7 @@ import {
   clearSession,
   getAccessToken,
   getRefreshToken,
+  getStoredProfile,
   saveSession,
 } from "@/lib/auth";
 import type {
@@ -13,6 +14,7 @@ import type {
   LoginPayload,
   StudentExamination,
   StudentProfile,
+  ExaminationNotification,
 } from "@/lib/types";
 import { ApiError } from "@/lib/types";
 
@@ -46,6 +48,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
   try {
     const result = await refreshStudentToken(refreshToken);
+    if (getRefreshToken() !== refreshToken) return null;
     saveSession(
       result.data.accessToken,
       result.data.refreshToken,
@@ -53,6 +56,7 @@ async function refreshAccessToken(): Promise<string | null> {
     );
     return result.data.accessToken;
   } catch {
+    if (getRefreshToken() !== refreshToken) return null;
     clearSession();
     return null;
   }
@@ -72,12 +76,14 @@ export async function authFetch(
   const doFetch = (token: string | null) =>
     fetch(`${API_BASE}${path}`, {
       ...rest,
+      cache: "no-store",
       headers: {
         ...(headers || {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
 
+  const identity = getStoredProfile()?.computerNumber;
   let token = getAccessToken();
   let res = await doFetch(token);
 
@@ -97,6 +103,9 @@ export async function authFetch(
     throw new ApiError("Session expired. Please sign in again.", 401);
   }
 
+  if (identity !== getStoredProfile()?.computerNumber || !getAccessToken()) {
+    throw new ApiError("Session changed. Please reload the page.", 401);
+  }
   return res;
 }
 
@@ -194,4 +203,17 @@ export async function downloadExaminationPassPdf(
   const filename = match?.[1] || `exam-pass-${computerNumber}.pdf`;
 
   return { blob, filename };
+}
+
+export async function listExaminationNotifications() {
+  return parseResponse<ExaminationNotification[]>(
+    await authFetch("/api/examination-notifications"),
+  );
+}
+
+export async function markExaminationNotificationRead(id: string | number) {
+  return parseResponse<unknown>(await authFetch(
+    `/api/examination-notifications/${encodeURIComponent(String(id))}/read`,
+    { method: "POST" },
+  ));
 }

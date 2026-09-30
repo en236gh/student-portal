@@ -1,5 +1,6 @@
 "use client";
 
+import { ExaminationNotices } from "@/components/notifications/ExaminationNotices";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { AppSidebar } from "@/components/shell/AppSidebar";
 import { getSessionUser, isAuthenticated } from "@/lib/auth";
@@ -24,8 +25,20 @@ export function AppShell({
       return;
     }
 
-    setUser(getSessionUser());
-    setReady(true);
+    const clear = () => {
+      setReady(false);
+      setUser(null);
+      router.replace("/login");
+    };
+    window.addEventListener("student-session-cleared", clear);
+    const initialize = window.setTimeout(() => {
+      setUser(getSessionUser());
+      setReady(isAuthenticated());
+    }, 0);
+    return () => {
+      window.clearTimeout(initialize);
+      window.removeEventListener("student-session-cleared", clear);
+    };
   }, [router]);
 
   if (!ready || !user) {
@@ -42,6 +55,7 @@ export function AppShell({
       <main className="min-h-screen pl-[290px]">
         <div className="animate-fade-up p-4 md:p-8">
           <AppHeader title={title} user={user} />
+          <ExaminationNotices />
           {children}
         </div>
       </main>

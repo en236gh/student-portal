@@ -2,24 +2,29 @@
 
 import { ExamCard } from "@/components/exams/ExamCard";
 import { listMyExaminations } from "@/lib/api";
-import { samePeriod } from "@/lib/exams";
+import { periodKey, isPublishedExam } from "@/lib/exams";
 import type { StudentExamination } from "@/lib/types";
 import { ApiError } from "@/lib/types";
 import { AcademicCapIcon } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function ExamsWorkspace() {
+  const request = useRef(0);
   const [exams, setExams] = useState<StudentExamination[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
+    const version = ++request.current;
     setLoading(true);
     setError("");
+    setExams([]);
     try {
       const result = await listMyExaminations();
-      setExams(result.data || []);
+      if (version !== request.current) return;
+      setExams((result.data || []).filter(isPublishedExam));
     } catch (err) {
+      if (version !== request.current) return;
       if (err instanceof ApiError && err.status === 401) return;
       setError(
         err instanceof Error
@@ -27,27 +32,28 @@ export function ExamsWorkspace() {
           : "Unable to load examinations. The API may be unavailable.",
       );
     } finally {
-      setLoading(false);
+      if (version === request.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void load();
+    const initialLoad = window.setTimeout(() => void load(), 0);
+    return () => {
+      // Invalidate in-flight requests when this view unmounts.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      request.current++;
+      window.clearTimeout(initialLoad);
+    };
   }, [load]);
 
-  function handlePassGenerated(updated: StudentExamination) {
-    setExams((current) =>
-      current.map((exam) =>
-        samePeriod(exam, updated)
-          ? {
-              ...exam,
-              passGenerated: true,
-              passId: updated.passId,
-            }
-          : exam,
-      ),
-    );
-  }
+  useEffect(() => {
+    window.addEventListener("examinations-updated", load);
+    window.addEventListener("focus", load);
+    return () => {
+      window.removeEventListener("examinations-updated", load);
+      window.removeEventListener("focus", load);
+    };
+  }, [load]);
 
   if (loading) {
     return (
@@ -61,6 +67,7 @@ export function ExamsWorkspace() {
     return (
       <div className="rounded-[10px] bg-brand-red/5 px-4 py-3 text-sm text-brand-red">
         {error}
+        <button className="ml-3 underline" onClick={load}>Retry</button>
       </div>
     );
   }
@@ -71,13 +78,23 @@ export function ExamsWorkspace() {
         <div className="flex h-14 w-14 items-center justify-center rounded-[10px] bg-surface-muted text-ink">
           <AcademicCapIcon className="h-7 w-7" />
         </div>
-        <h3 className="mt-4 text-base font-semibold text-ink">No examinations yet</h3>
+        <h3 className="mt-4 text-base font-semibold text-ink">No eligible examinations</h3>
         <p className="mt-2 max-w-sm text-sm text-muted">
-          Registered courses with exam sessions will appear here once allocated.
+          Your eligible published examinations will appear here when available.
         </p>
       </div>
     );
   }
 
-  return <ExamCard exams={exams} onPassGenerated={handlePassGenerated} />;
+  const groups = new Map<string, StudentExamination[]>();
+  for (const exam of exams) {
+    const key = periodKey(exam);
+    groups.set(key, [...(groups.get(key) || []), exam]);
+  }
+  return <div className="space-y-4">
+    <button className="text-sm underline" onClick={load}>Refresh examinations</button>
+    {Array.from(groups, ([key, items]) => (
+      <ExamCard key={key} exams={items} onPassGenerated={() => void load()} />
+    ))}
+  </div>;
 }

@@ -16,13 +16,14 @@ import {
 import type { ExaminationPass, ExaminationPassPeriod } from "@/lib/types";
 import { ApiError } from "@/lib/types";
 import {
+  ArrowPathIcon,
   ArrowDownTrayIcon,
   ArrowLeftIcon,
   PrinterIcon,
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 function errorMessage(err: unknown, fallback: string) {
@@ -32,35 +33,56 @@ function errorMessage(err: unknown, fallback: string) {
 }
 
 export function PassPreview({ period }: { period: ExaminationPassPeriod }) {
+  const request = useRef(0);
   const [pass, setPass] = useState<ExaminationPass | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [missing, setMissing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   const load = useCallback(async () => {
+    const version = ++request.current;
     setLoading(true);
-    setError("");
+    setPass(null);
+    setMissing(false);
     try {
-      const result = await getExaminationPass(period);
+      const result = await getExaminationPass({
+        academicYear: period.academicYear,
+        semester: period.semester,
+      });
+      if (version !== request.current) return;
       setPass(result.data);
+      setError("");
     } catch (err) {
+      if (version !== request.current) return;
       if (err instanceof ApiError && err.status === 401) return;
 
       // Pass not generated yet — offer generate
-      if (err instanceof ApiError && (err.status === 400 || err.status === 404)) {
+      if (err instanceof ApiError && err.status === 404) {
+        setMissing(true);
         setError(err.message);
         setPass(null);
       } else {
         setError(errorMessage(err, "Unable to load examination pass"));
       }
     } finally {
-      setLoading(false);
+      if (version === request.current) setLoading(false);
     }
   }, [period.academicYear, period.semester]);
 
   useEffect(() => {
-    void load();
+    const initialLoad = window.setTimeout(() => void load(), 0);
+    window.addEventListener("examinations-updated", load);
+    window.addEventListener("focus", load);
+    return () => {
+      window.clearTimeout(initialLoad);
+      // Invalidate in-flight requests when this view unmounts.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      request.current++;
+      window.removeEventListener("examinations-updated", load);
+      window.removeEventListener("focus", load);
+    };
   }, [load]);
 
   const view = useMemo(() => (pass ? normalizePass(pass) : null), [pass]);
@@ -129,15 +151,22 @@ export function PassPreview({ period }: { period: ExaminationPassPeriod }) {
         </Link>
 
         <div className="rounded-[10px] bg-white p-8 panel-shadow">
-          <h2 className="text-lg font-semibold text-ink">Pass not available</h2>
+          <h2 className="text-lg font-semibold text-ink">{missing ? "Pass not yet generated" : "Unable to load pass"}</h2>
           <p className="mt-2 text-sm text-brand-red">
             {error || "This examination pass has not been generated yet."}
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
-            <Button onClick={handleGenerate} disabled={generating}>
+            {missing && <Button onClick={handleGenerate} disabled={generating}>
               {generating ? "Generating…" : "Generate Pass"}
-            </Button>
-            <Button variant="secondary" onClick={() => void load()}>
+            </Button>}
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setLoading(true);
+                setError("");
+                void load();
+              }}
+            >
               Retry
             </Button>
           </div>
@@ -158,6 +187,18 @@ export function PassPreview({ period }: { period: ExaminationPassPeriod }) {
         </Link>
 
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setLoading(true);
+              setError("");
+              void load();
+            }}
+            disabled={loading}
+          >
+            <ArrowPathIcon className="h-4 w-4" />
+            Refresh pass
+          </Button>
           <Button onClick={handleDownload} disabled={downloading}>
             <ArrowDownTrayIcon className="h-4 w-4" />
             {downloading ? "Downloading…" : "Download PDF for printing"}
@@ -239,6 +280,10 @@ export function PassPreview({ period }: { period: ExaminationPassPeriod }) {
           </div>
         </section>
 
+        <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
+          <div><dt className="text-muted">Generated</dt><dd>{view.generatedAt ? new Date(view.generatedAt).toLocaleString() : "Not provided"}</dd></div>
+          <div><dt className="text-muted">Expires</dt><dd>{view.expiresAt ? new Date(view.expiresAt).toLocaleString() : "Not provided"}</dd></div>
+        </dl>
         <section className="mt-8">
           <h2 className="text-sm font-semibold text-ink">Allocated examinations</h2>
           <div className="mt-3 overflow-x-auto">

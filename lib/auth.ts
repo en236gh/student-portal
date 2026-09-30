@@ -11,9 +11,11 @@ export function saveSession(
 ) {
   if (typeof window === "undefined") return;
 
+  const previousIdentity = getStoredProfile()?.computerNumber;
   localStorage.setItem(ACCESS_KEY, accessToken);
   localStorage.setItem(REFRESH_KEY, refreshToken);
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  if (previousIdentity && previousIdentity !== profile.computerNumber) window.location.reload();
   document.cookie = `student_session=1; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 }
 
@@ -24,6 +26,7 @@ export function clearSession() {
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(PROFILE_KEY);
   document.cookie = "student_session=; path=/; max-age=0; SameSite=Lax";
+  window.dispatchEvent(new Event("student-session-cleared"));
 }
 
 export function getAccessToken() {
@@ -69,4 +72,14 @@ export function getSessionUser(): SessionUser | null {
 
 export function isAuthenticated() {
   return Boolean(getAccessToken() && getStoredProfile());
+}
+
+// A session change in another tab must discard every mounted student view.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key === null || event.key === PROFILE_KEY ||
+        (event.key === ACCESS_KEY && !event.newValue)) {
+      window.location.reload();
+    }
+  });
 }

@@ -95,12 +95,12 @@ export function ExamCard({
                 Examination pass · {exam.academicYear} · Sem {exam.semester}
               </h3>
               <p className="mt-1 text-sm text-muted">
-                {exams.length} allocated course{exams.length === 1 ? "" : "s"}
+                {exams.length} eligible course{exams.length === 1 ? "" : "s"}
               </p>
           </div>
         </div>
-          <Badge tone={examStatusTone(sameStatus ? exam.examStatus : "Allocated")}>
-            {sameStatus ? exam.examStatus : "Allocated"}
+          <Badge tone={examStatusTone(sameStatus ? exam.examStatus : "Mixed statuses")}>
+            {sameStatus ? exam.examStatus : "Mixed statuses"}
           </Badge>
       </div>
 
@@ -111,8 +111,7 @@ export function ExamCard({
                 <th className="py-2 pr-3 font-medium">Course</th>
                 <th className="py-2 pr-3 font-medium">Exam</th>
                 <th className="py-2 pr-3 font-medium">Date and time</th>
-                <th className="py-2 pr-3 font-medium">Venue</th>
-                <th className="py-2 font-medium">Seat</th>
+                <th className="py-2 font-medium">Venue</th>
               </tr>
             </thead>
             <tbody>
@@ -123,11 +122,8 @@ export function ExamCard({
                   </td>
                   <td className="py-3 pr-3 text-ink">{item.examType}</td>
                   <td className="py-3 pr-3 text-ink">{formatExamWindow(item)}</td>
-                  <td className="py-3 pr-3 text-ink">
-                    {item.allocated ? item.venueName || "—" : "Not allocated"}
-                  </td>
-                  <td className="py-3 font-mono font-semibold text-ink">
-                    {item.allocated ? item.seatNumber ?? "—" : "—"}
+                  <td className="py-3 text-ink">
+                    {item.allocated ? [item.venueName, item.building].filter(Boolean).join(" · ") || "—" : "Not allocated"}
                   </td>
                 </tr>
               ))}
@@ -137,17 +133,12 @@ export function ExamCard({
 
         {waitingAllocation ? (
           <div className="mt-5 rounded-[10px] bg-brand-gold/10 px-4 py-3 text-sm text-amber-900">
-            Waiting for venue allocation. The pass can be generated once every course
-            has a seat assigned.
+            Some examinations are awaiting venue allocation. Pass eligibility is checked when you generate a pass.
           </div>
         ) : null}
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {waitingAllocation ? (
-          <Button size="sm" disabled>
-            Generate Pass
-          </Button>
-        ) : !exam.passGenerated ? (
+        {!exam.passGenerated ? (
           <Button
             size="sm"
             onClick={handleGenerate}
